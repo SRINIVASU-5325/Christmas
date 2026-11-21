@@ -15,12 +15,11 @@
   }
   canvas { display: block; width: 100%; height: 100%; }
   .title {
-    position: fixed; top: 18px; left: 0; right: 0;
+    position: fixed; top: 20px; left: 0; right: 0;
     text-align: center; pointer-events: none; z-index: 10;
     font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(24px, 5vw, 38px); font-weight: bold;
+    font-size: clamp(26px, 6.5vw, 40px); font-weight: bold;
     letter-spacing: 1px;
-    text-shadow: 0 2px 14px rgba(255, 105, 180, 0.7);
     transition: color 0.8s ease;
   }
   .controls {
@@ -34,13 +33,13 @@
     color: #fff; padding: 9px 14px; border-radius: 999px;
     font-size: 13px; font-weight: 600; cursor: pointer;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.15s ease, background 0.2s ease;
   }
   button:active { transform: scale(0.94); }
   button.gift-btn {
     background: linear-gradient(135deg, #ff2e93, #ff75b5);
     border-color: rgba(255,255,255,0.55);
-    box-shadow: 0 0 18px rgba(255, 46, 147, 0.55);
+    box-shadow: 0 0 18px rgba(255, 46, 147, 0.6);
   }
 </style>
 </head>
@@ -74,6 +73,29 @@
     { name: "Divine Aurora", colors: [[16,185,129],[45,212,191],[52,211,153],[167,139,250],[255,255,255],[0,255,180]], bg: [2,10,8] }
   ];
 
+  // Pre-rendered soft-glow particle sprites for crisp, magical stardust
+  let sprites = [];
+  let whiteSprite = null;
+
+  function makeGlowSprite(c) {
+    const s = document.createElement("canvas");
+    s.width = 32; s.height = 32;
+    const gctx = s.getContext("2d");
+    const grad = gctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.22, `rgba(${c[0]},${c[1]},${c[2]},0.92)`);
+    grad.addColorStop(0.55, `rgba(${c[0]},${c[1]},${c[2]},0.28)`);
+    grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
+    gctx.fillStyle = grad;
+    gctx.fillRect(0, 0, 32, 32);
+    return s;
+  }
+
+  function rebuildSprites(idx) {
+    sprites = THEMES[idx].colors.map(makeGlowSprite);
+    if (!whiteSprite) whiteSprite = makeGlowSprite([255, 255, 255]);
+  }
+
   let W = window.innerWidth, H = window.innerHeight, DPR = Math.min(window.devicePixelRatio || 1, 2);
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
@@ -87,31 +109,29 @@
   let glowOn = true;
   let paused = false;
   let angle = 0;
-  let camDist = 3.3;
-  let targetDist = 3.3;
+  let camDist = 3.1;
+  let targetDist = 3.1;
   const autoSpeed = 0.11; // Slow, graceful spin
-  let manualVel = 0;
   let timeT = 0;
 
-  // Theme transition state (dissolve -> slow spinning sparkline reform)
-  let transPhase = "idle"; // "idle" | "dissolving" | "reforming"
+  // Theme transition state
+  let transPhase = "idle";
   let transProg = 0;
   let pendingThemeIdx = 0;
   const sparkTrail = [];
 
   // Gift surprise state
   const gift = {
-    phase: "idle", // "idle" | "beating" | "blasted"
+    phase: "idle",
     timer: 0,
     messageAlpha: 0,
     shockwaves: [],
     miniHearts: []
   };
 
-  // Particle counts tuned for smooth mobile 60 FPS
-  const N_TREE = 2600;
-  const N_TRAIL = 260;
-  const N_AMBIENT = 180;
+  const N_TREE = 3200;
+  const N_TRAIL = 320;
+  const N_AMBIENT = 220;
 
   function randGauss() {
     return (Math.random() + Math.random() + Math.random() - 1.5) * 0.65;
@@ -123,16 +143,16 @@
     const y = -1.0 + yNorm * 2.2;
     const maxR = (1.0 - yNorm) * 0.95 + 0.02;
     let x, z;
-    if (Math.random() < 0.64) {
-      const a = yNorm * 7.5 * Math.PI * 2 + randGauss() * 0.25;
-      const r = maxR * (0.82 + Math.random() * 0.18);
+    if (Math.random() < 0.65) {
+      const a = yNorm * 7.5 * Math.PI * 2 + randGauss() * 0.18;
+      const r = maxR * (0.85 + Math.random() * 0.15);
       x = Math.cos(a) * r; z = Math.sin(a) * r;
     } else {
       const a = Math.random() * Math.PI * 2;
-      const r = maxR * Math.sqrt(Math.random()) * 0.92;
+      const r = maxR * Math.sqrt(Math.random()) * 0.9;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
     }
-    x += randGauss() * 0.02; z += randGauss() * 0.02;
+    x += randGauss() * 0.015; z += randGauss() * 0.015;
     const sa = Math.random() * Math.PI * 2;
     const sr = 1.1 + Math.random() * 1.4;
     treePts.push({
@@ -140,7 +160,7 @@
       sx: x + Math.cos(sa) * sr, sy: y + (Math.random() - 0.5) * 1.2, sz: z + Math.sin(sa) * sr,
       hNorm: yNorm,
       cIdx: Math.floor(Math.random() * 6),
-      size: 1.1 + Math.random() * 2.3,
+      size: 0.45 + Math.random() * 0.95, // Fine, delicate stardust
       phase: Math.random() * Math.PI * 2
     });
   }
@@ -161,7 +181,7 @@
   for (let i = 0; i < N_AMBIENT; i++) {
     ambient.push({
       x: (Math.random() - 0.5) * 4.4,
-      y: (Math.random() - 0.5) * 3.2,
+      y: (Math.random() - 0.5) * 3.4,
       z: (Math.random() - 0.5) * 3.0,
       phase: Math.random() * Math.PI * 2,
       cIdx: i % 6
@@ -172,24 +192,26 @@
 
   function rgb(c, a = 1) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
 
-  function updateTitleColor() {
+  function updateThemeUI() {
+    rebuildSprites(themeIdx);
     const c = THEMES[themeIdx].colors[0];
     titleEl.style.color = `rgb(${c[0]},${c[1]},${c[2]})`;
     titleEl.style.textShadow = `0 0 18px rgba(${c[0]},${c[1]},${c[2]},0.75)`;
     themeBtn.textContent = `Theme: ${THEMES[themeIdx].name}`;
   }
-  updateTitleColor();
+  updateThemeUI();
 
   function project(x, y, z, ang, dist) {
     const ca = Math.cos(ang), sa = Math.sin(ang);
     const rx = x * ca + z * sa;
     const rz = -x * sa + z * ca;
-    const baseScale = Math.min(W, H) * 0.52;
-    const scale = baseScale / (dist - rz * 0.45 + 0.9);
+    // Responsive scale so the tree fills portrait mobile screens nicely
+    const baseScale = Math.min(W * 0.72, H * 0.56);
+    const scale = baseScale / (dist - rz * 0.45 + 0.75);
     return {
       sx: W / 2 + rx * scale,
-      sy: H / 2 - y * scale + 15,
-      scale, depth: (rz + 1) / 2, z: rz
+      sy: H * 0.52 - y * scale,
+      scale, depth: (rz + 1) / 2
     };
   }
 
@@ -199,8 +221,8 @@
     ctx.rotate(rot);
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     if (glowOn) {
-      ctx.shadowColor = rgb(color, 0.9);
-      ctx.shadowBlur = s * 1.1;
+      ctx.shadowColor = rgb(color, 0.95);
+      ctx.shadowBlur = s * 1.4;
     }
     ctx.beginPath();
     for (let i = 0; i <= 32; i++) {
@@ -213,8 +235,8 @@
     ctx.closePath();
     ctx.fillStyle = rgb(color, 1);
     ctx.fill();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255,255,255,0.75)";
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
     ctx.stroke();
     ctx.restore();
   }
@@ -245,11 +267,11 @@
     pauseBtn.textContent = paused ? "Resume" : "Pause";
   });
   resetBtn.addEventListener("click", () => {
-    angle = 0; targetDist = 3.3; camDist = 3.3; manualVel = 0;
+    angle = 0; targetDist = 3.1; camDist = 3.1;
   });
 
   // Mouse & Touch Controls
-  let dragging = false, lastX = 0, pinchStartDist = 0, pinchStartCam = 3.3, moved = false;
+  let dragging = false, lastX = 0, pinchStartDist = 0, pinchStartCam = 3.1, moved = false;
 
   canvas.addEventListener("pointerdown", e => {
     dragging = true; lastX = e.clientX; moved = false;
@@ -268,7 +290,7 @@
   });
   canvas.addEventListener("wheel", e => {
     e.preventDefault();
-    targetDist = Math.max(1.8, Math.min(5.5, targetDist + e.deltaY * 0.002));
+    targetDist = Math.max(1.8, Math.min(5.2, targetDist + e.deltaY * 0.002));
   }, { passive: false });
 
   canvas.addEventListener("touchstart", e => {
@@ -285,16 +307,9 @@
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const d = Math.hypot(dx, dy);
-      targetDist = Math.max(1.8, Math.min(5.5, pinchStartCam * (pinchStartDist / d)));
+      targetDist = Math.max(1.8, Math.min(5.2, pinchStartCam * (pinchStartDist / d)));
     }
   }, { passive: true });
-
-  window.addEventListener("keydown", e => {
-    if (e.code === "Space") { paused = !paused; pauseBtn.textContent = paused ? "Resume" : "Pause"; }
-    else if (e.key.toLowerCase() === "c") triggerThemeChange();
-    else if (e.key.toLowerCase() === "g") { glowOn = !glowOn; glowBtn.textContent = `Glow: ${glowOn ? "ON" : "OFF"}`; }
-    else if (e.key.toLowerCase() === "r") { angle = 0; targetDist = 3.3; camDist = 3.3; }
-  });
 
   let lastTime = performance.now();
 
@@ -304,28 +319,26 @@
 
     if (!paused) {
       timeT += dt;
-      angle += (autoSpeed + manualVel) * dt;
-      manualVel *= 0.92;
+      angle += autoSpeed * dt;
     }
     camDist += (targetDist - camDist) * 0.08;
 
-    // Update theme transition
-    let treeAlphaGlobal = 1;
+    // Theme transition update
     if (transPhase === "dissolving") {
       transProg += dt / 0.9;
       if (transProg >= 1) {
         themeIdx = pendingThemeIdx;
-        updateTitleColor();
+        updateThemeUI();
         transPhase = "reforming";
         transProg = 0;
         sparkTrail.length = 0;
       }
     } else if (transPhase === "reforming") {
-      transProg += dt / 2.8; // Slow, graceful spinning sparkline reform
+      transProg += dt / 2.8;
       const h = Math.min(1, transProg);
       const spY = -1.0 + h * 2.38;
       const spR = Math.max(0.02, (1 - h) * 1.02);
-      const spAng = h * Math.PI * 2 * 3.5; // 3.5 smooth revolutions
+      const spAng = h * Math.PI * 2 * 3.5;
       sparkTrail.push({ x: Math.cos(spAng) * spR, y: spY, z: Math.sin(spAng) * spR, life: 1.0 });
       if (sparkTrail.length > 85) sparkTrail.shift();
       for (const s of sparkTrail) s.life -= dt * 1.1;
@@ -340,40 +353,44 @@
 
     const theme = THEMES[themeIdx];
     const bg = theme.bg;
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
     ctx.fillRect(0, 0, W, H);
 
-    // Ambient stars
+    // Ambient bokeh stars
+    ctx.globalCompositeOperation = "lighter";
     for (let i = 0; i < N_AMBIENT; i++) {
       const a = ambient[i];
       const p = project(a.x, a.y, a.z, angle * 0.3, camDist + 0.8);
-      if (p.sx < 0 || p.sx > W || p.sy < 0 || p.sy > H) continue;
-      const tw = 0.4 + 0.6 * Math.sin(timeT * 1.8 + a.phase);
-      const c = theme.colors[a.cIdx];
-      ctx.fillStyle = rgb(c, tw * 0.75);
-      ctx.beginPath();
-      ctx.arc(p.sx, p.sy, 1 + tw * 1.2, 0, Math.PI * 2);
-      ctx.fill();
+      if (p.sx < -10 || p.sx > W + 10 || p.sy < -10 || p.sy > H + 10) continue;
+      const tw = 0.35 + 0.65 * Math.sin(timeT * 1.8 + a.phase);
+      const sz = 4 + tw * 5;
+      ctx.globalAlpha = tw * 0.55;
+      ctx.drawImage(sprites[a.cIdx], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
     }
 
-    // Glowing base
+    // Glowing elliptical base
     const baseP = project(0, -1.05, 0, angle, camDist);
     const baseAlpha = transPhase === "dissolving" ? Math.max(0, 1 - transProg) : transPhase === "reforming" ? Math.min(1, transProg * 2) : 1;
     if (baseAlpha > 0.02) {
-      const grad = ctx.createRadialGradient(baseP.sx, baseP.sy, 8, baseP.sx, baseP.sy, 160);
-      grad.addColorStop(0, rgb(theme.colors[0], 0.42 * baseAlpha));
+      ctx.globalAlpha = 1;
+      const baseR = Math.min(W * 0.42, 180);
+      const grad = ctx.createRadialGradient(baseP.sx, baseP.sy, 6, baseP.sx, baseP.sy, baseR);
+      grad.addColorStop(0, rgb(theme.colors[0], 0.45 * baseAlpha));
       grad.addColorStop(1, rgb(theme.colors[0], 0));
       ctx.save();
       ctx.scale(1, 0.22);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(baseP.sx, baseP.sy / 0.22, 160, 0, Math.PI * 2);
+      ctx.arc(baseP.sx, baseP.sy / 0.22, baseR, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
 
-    // Tree particles
+    // Tree particles (crisp glowing stardust)
     ctx.globalCompositeOperation = glowOn ? "lighter" : "source-over";
+    const sizeScale = Math.min(W, H) / 420;
     for (let i = 0; i < N_TREE; i++) {
       const pt = treePts[i];
       let px = pt.hx, py = pt.hy, pz = pt.hz;
@@ -402,16 +419,13 @@
 
       if (alpha <= 0.02) continue;
       const p = project(px, py, pz, angle, camDist);
-      if (p.sx < -10 || p.sx > W + 10 || p.sy < -10 || p.sy > H + 10) continue;
+      if (p.sx < -12 || p.sx > W + 12 || p.sy < -12 || p.sy > H + 12) continue;
 
       const tw = 0.55 + 0.45 * Math.sin(timeT * 2.8 + pt.phase);
-      const r = pt.size * (0.55 + p.depth * 0.85) * (3.2 / Math.max(1.4, camDist));
-      const c = flash > 0.2 ? [255, 255, 255] : theme.colors[pt.cIdx];
-
-      ctx.fillStyle = rgb(c, alpha * (0.45 + tw * 0.55));
-      ctx.beginPath();
-      ctx.arc(p.sx, p.sy, Math.max(0.8, r), 0, Math.PI * 2);
-      ctx.fill();
+      const spriteSize = (glowOn ? 7.5 : 4.2) * pt.size * sizeScale * (0.55 + p.depth * 0.7) * (3.1 / Math.max(1.5, camDist));
+      ctx.globalAlpha = Math.min(1, alpha * (0.45 + tw * 0.55));
+      const sp = flash > 0.2 ? whiteSprite : sprites[pt.cIdx];
+      ctx.drawImage(sp, p.sx - spriteSize / 2, p.sy - spriteSize / 2, spriteSize, spriteSize);
     }
 
     // Orbiting trails
@@ -421,10 +435,9 @@
         const a0 = tr.a + timeT * tr.speed;
         const y = tr.y + Math.sin(timeT * 1.2 + i) * 0.02;
         const p = project(Math.cos(a0) * tr.r, y, Math.sin(a0) * tr.r, 0, camDist);
-        ctx.fillStyle = rgb(theme.colors[tr.cIdx], 0.75);
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, 1.8, 0, Math.PI * 2);
-        ctx.fill();
+        const sz = 6.5 * sizeScale;
+        ctx.globalAlpha = 0.72;
+        ctx.drawImage(sprites[tr.cIdx], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
       }
     }
 
@@ -435,15 +448,13 @@
         if (s.life <= 0) continue;
         const p = project(s.x, s.y, s.z, angle, camDist);
         const isHead = i === sparkTrail.length - 1;
-        const rad = isHead ? 7 : 1.5 + (i / sparkTrail.length) * 3.5;
-        ctx.fillStyle = isHead ? "rgba(255,255,255,0.98)" : rgb(theme.colors[0], s.life * 0.9);
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, rad, 0, Math.PI * 2);
-        ctx.fill();
+        const sz = isHead ? 26 * sizeScale : (5 + (i / sparkTrail.length) * 11) * sizeScale;
+        ctx.globalAlpha = isHead ? 1 : Math.max(0, s.life * 0.9);
+        ctx.drawImage(isHead ? whiteSprite : sprites[0], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
       }
     }
 
-    // Click bursts
+    // Tap bursts
     for (let i = bursts.length - 1; i >= 0; i--) {
       const b = bursts[i];
       b.life -= dt * 0.9;
@@ -451,40 +462,38 @@
       for (let k = 0; k < 14; k++) {
         const a = (k / 14) * Math.PI * 2 + timeT;
         const rr = (1 - b.life) * 65;
-        ctx.fillStyle = rgb(theme.colors[k % 6], b.life);
-        ctx.beginPath();
-        ctx.arc(b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr, 2.6, 0, Math.PI * 2);
-        ctx.fill();
+        const sz = 10 * b.life;
+        ctx.globalAlpha = b.life;
+        ctx.drawImage(sprites[k % 6], b.x + Math.cos(a) * rr - sz / 2, b.y + Math.sin(a) * rr - sz / 2, sz, sz);
       }
     }
 
+    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
 
-    // Topper Heart + Gift Surprise Logic
-    const topP = project(0, 1.38 + Math.sin(timeT * 2) * 0.03, 0, angle, camDist);
-    let heartScale = 20 * (1 + 0.1 * Math.sin(timeT * 3.5));
+    // Heart Topper + Gift Surprise
+    const topP = project(0, 1.34 + Math.sin(timeT * 2) * 0.025, 0, angle, camDist);
+    let heartScale = Math.max(14, 18 * sizeScale) * (1 + 0.1 * Math.sin(timeT * 3.5));
     let heartAlpha = transPhase === "dissolving" ? Math.max(0, 1 - transProg * 1.5) : transPhase === "reforming" ? Math.max(0, (transProg - 0.85) / 0.15) : 1;
 
     if (gift.phase === "beating") {
       gift.timer += dt;
-      // 3 intensifying heartbeats over 1.5s
       const beat = Math.pow(Math.max(0, Math.sin(gift.timer * Math.PI * 4)), 2);
-      heartScale = 20 * (1 + beat * (0.6 + gift.timer * 0.5));
+      heartScale *= (1 + beat * (0.6 + gift.timer * 0.5));
       if (gift.timer >= 1.5) {
         gift.phase = "blasted";
         gift.timer = 0;
-        gift.shockwaves.push({ x: topP.sx, y: topP.sy, r: 10, maxR: Math.min(W, H) * 0.45, alpha: 1 });
+        gift.shockwaves.push({ x: topP.sx, y: topP.sy, r: 10, maxR: Math.min(W, H) * 0.5, alpha: 1 });
         for (let i = 0; i < 75; i++) {
           const ang = Math.random() * Math.PI * 2;
-          const spd = 90 + Math.random() * 260;
+          const spd = 85 + Math.random() * 240;
           gift.miniHearts.push({
             x: topP.sx, y: topP.sy,
             vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 40,
-            size: 6 + Math.random() * 11,
+            size: 6 + Math.random() * 10,
             rot: (Math.random() - 0.5) * 0.6,
             vRot: (Math.random() - 0.5) * 1.5,
             life: 5.5 + Math.random() * 2.0,
-            maxLife: 7.5,
             wobble: Math.random() * Math.PI * 2,
             color: i % 3 === 0 ? [255, 80, 150] : i % 3 === 1 ? [255, 180, 210] : theme.colors[0]
           });
@@ -498,9 +507,7 @@
       } else {
         gift.messageAlpha = Math.max(0, gift.messageAlpha - dt * 0.7);
       }
-      if (gift.timer > 7.8 && gift.miniHearts.length === 0) {
-        gift.phase = "idle";
-      }
+      if (gift.timer > 7.8 && gift.miniHearts.length === 0) gift.phase = "idle";
     }
 
     if (heartAlpha > 0.02) {
@@ -528,31 +535,20 @@
       h.life -= dt;
       if (h.life <= 0) { gift.miniHearts.splice(i, 1); continue; }
       h.vx *= 0.965;
-      h.vy = h.vy * 0.965 - 12 * dt; // Gentle upward float after blast
+      h.vy = h.vy * 0.965 - 12 * dt;
       h.x += (h.vx + Math.sin(timeT * 2.5 + h.wobble) * 18) * dt;
       h.y += h.vy * dt;
       h.rot += h.vRot * dt;
-      const a = Math.min(1, h.life / 1.5);
-      drawHeartShape(h.x, h.y, h.size, h.color, a, h.rot);
+      drawHeartShape(h.x, h.y, h.size, h.color, Math.min(1, h.life / 1.5), h.rot);
     }
 
-    // Gift message: "I love you friend"
+    // Gift message
     if (gift.messageAlpha > 0.01) {
       ctx.save();
       ctx.globalAlpha = gift.messageAlpha;
       ctx.textAlign = "center";
-      ctx.font = `bold ${Math.max(24, Math.min(46, W * 0.075))}px Georgia, serif`;
+      ctx.font = `bold ${Math.max(24, Math.min(44, W * 0.08))}px Georgia, serif`;
       ctx.shadowColor = rgb(theme.colors[0], 0.95);
       ctx.shadowBlur = 24;
       ctx.fillStyle = "#ffffff";
-      ctx.fillText("I love you friend", W / 2, H * 0.36);
-      ctx.restore();
-    }
-
-    requestAnimationFrame(loop);
-  }
-  requestAnimationFrame(loop);
-})();
-</script>
-</body>
-</html>
+      ctx.fillText
