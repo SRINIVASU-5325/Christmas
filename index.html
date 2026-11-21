@@ -8,7 +8,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body {
     width: 100%; height: 100%; overflow: hidden;
-    background: #08020a;
+    background: #060208;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
     touch-action: none;
     user-select: none;
@@ -29,17 +29,17 @@
   }
   button {
     border: 1px solid rgba(255,255,255,0.22);
-    background: rgba(15, 10, 22, 0.65);
+    background: rgba(15, 10, 22, 0.72);
     color: #fff; padding: 9px 14px; border-radius: 999px;
     font-size: 13px; font-weight: 600; cursor: pointer;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    transition: transform 0.15s ease, background 0.2s ease;
+    transition: transform 0.15s ease;
   }
   button:active { transform: scale(0.94); }
   button.gift-btn {
     background: linear-gradient(135deg, #ff2e93, #ff75b5);
-    border-color: rgba(255,255,255,0.55);
-    box-shadow: 0 0 18px rgba(255, 46, 147, 0.6);
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 0 0 16px rgba(255, 46, 147, 0.55);
   }
 </style>
 </head>
@@ -66,40 +66,20 @@
   const giftBtn = document.getElementById("giftBtn");
 
   const THEMES = [
-    { name: "Rose Magic", colors: [[255,105,180],[255,20,147],[255,182,193],[255,105,180],[255,255,255],[219,112,147]], bg: [8,2,10] },
-    { name: "Royal Purple", colors: [[168,85,247],[147,51,234],[192,132,252],[216,180,254],[255,255,255],[139,92,246]], bg: [6,2,14] },
-    { name: "Golden Christmas", colors: [[255,215,0],[255,223,0],[255,180,0],[255,240,180],[255,255,255],[255,165,0]], bg: [10,6,0] },
-    { name: "Frozen Christmas", colors: [[0,191,255],[135,206,250],[173,216,230],[0,255,255],[255,255,255],[100,180,255]], bg: [2,6,14] },
-    { name: "Divine Aurora", colors: [[16,185,129],[45,212,191],[52,211,153],[167,139,250],[255,255,255],[0,255,180]], bg: [2,10,8] }
+    { name: "Rose Magic", colors: [[255,105,180],[255,20,147],[255,182,193],[255,130,195],[255,255,255],[219,112,147]], bg: [6,2,8] },
+    { name: "Royal Purple", colors: [[168,85,247],[147,51,234],[192,132,252],[216,180,254],[255,255,255],[139,92,246]], bg: [5,2,12] },
+    { name: "Golden Christmas", colors: [[255,215,0],[255,223,0],[255,180,0],[255,240,180],[255,255,255],[255,165,0]], bg: [8,5,0] },
+    { name: "Frozen Christmas", colors: [[0,191,255],[135,206,250],[173,216,230],[0,255,255],[255,255,255],[100,180,255]], bg: [2,5,12] },
+    { name: "Divine Aurora", colors: [[16,185,129],[45,212,191],[52,211,153],[167,139,250],[255,255,255],[0,255,180]], bg: [2,8,7] }
   ];
 
-  // Pre-rendered soft-glow particle sprites for crisp, magical stardust
-  let sprites = [];
-  let whiteSprite = null;
-
-  function makeGlowSprite(c) {
-    const s = document.createElement("canvas");
-    s.width = 32; s.height = 32;
-    const gctx = s.getContext("2d");
-    const grad = gctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.22, `rgba(${c[0]},${c[1]},${c[2]},0.92)`);
-    grad.addColorStop(0.55, `rgba(${c[0]},${c[1]},${c[2]},0.28)`);
-    grad.addColorStop(1, `rgba(${c[0]},${c[1]},${c[2]},0)`);
-    gctx.fillStyle = grad;
-    gctx.fillRect(0, 0, 32, 32);
-    return s;
-  }
-
-  function rebuildSprites(idx) {
-    sprites = THEMES[idx].colors.map(makeGlowSprite);
-    if (!whiteSprite) whiteSprite = makeGlowSprite([255, 255, 255]);
-  }
-
-  let W = window.innerWidth, H = window.innerHeight, DPR = Math.min(window.devicePixelRatio || 1, 2);
+  let W = window.innerWidth, H = window.innerHeight;
+  let DPR = Math.min(window.devicePixelRatio || 1, 3); // Full native sharpness on mobile
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
-    canvas.width = W * DPR; canvas.height = H * DPR;
+    DPR = Math.min(window.devicePixelRatio || 1, 3);
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
   window.addEventListener("resize", resize);
@@ -109,9 +89,9 @@
   let glowOn = true;
   let paused = false;
   let angle = 0;
-  let camDist = 3.1;
-  let targetDist = 3.1;
-  const autoSpeed = 0.11; // Slow, graceful spin
+  let camDist = 3.0;
+  let targetDist = 3.0;
+  const autoSpeed = 0.11; // Slow, graceful rotation
   let timeT = 0;
 
   // Theme transition state
@@ -129,30 +109,32 @@
     miniHearts: []
   };
 
-  const N_TREE = 3200;
-  const N_TRAIL = 320;
-  const N_AMBIENT = 220;
+  const N_TREE = 2200;
+  const N_TRAIL = 220;
+  const N_AMBIENT = 160;
 
   function randGauss() {
-    return (Math.random() + Math.random() + Math.random() - 1.5) * 0.65;
+    return (Math.random() + Math.random() + Math.random() - 1.5) * 0.55;
   }
 
+  // Crisp 3D conical spiral tree
   const treePts = [];
   for (let i = 0; i < N_TREE; i++) {
-    const yNorm = Math.pow(Math.random(), 0.85);
-    const y = -1.0 + yNorm * 2.2;
-    const maxR = (1.0 - yNorm) * 0.95 + 0.02;
+    const yNorm = Math.pow(Math.random(), 0.88);
+    const y = -1.05 + yNorm * 2.25;
+    const maxR = (1.0 - yNorm) * 0.92 + 0.015;
     let x, z;
-    if (Math.random() < 0.65) {
-      const a = yNorm * 7.5 * Math.PI * 2 + randGauss() * 0.18;
-      const r = maxR * (0.85 + Math.random() * 0.15);
+    if (Math.random() < 0.72) {
+      // Crisp spiral ribbons
+      const a = yNorm * 7.5 * Math.PI * 2 + randGauss() * 0.14;
+      const r = maxR * (0.88 + Math.random() * 0.12);
       x = Math.cos(a) * r; z = Math.sin(a) * r;
     } else {
+      // Subtle interior fill
       const a = Math.random() * Math.PI * 2;
-      const r = maxR * Math.sqrt(Math.random()) * 0.9;
+      const r = maxR * Math.sqrt(Math.random()) * 0.85;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
     }
-    x += randGauss() * 0.015; z += randGauss() * 0.015;
     const sa = Math.random() * Math.PI * 2;
     const sr = 1.1 + Math.random() * 1.4;
     treePts.push({
@@ -160,7 +142,8 @@
       sx: x + Math.cos(sa) * sr, sy: y + (Math.random() - 0.5) * 1.2, sz: z + Math.sin(sa) * sr,
       hNorm: yNorm,
       cIdx: Math.floor(Math.random() * 6),
-      size: 0.45 + Math.random() * 0.95, // Fine, delicate stardust
+      size: 0.75 + Math.random() * 1.15, // Crisp 0.75px - 1.9px pinpoints
+      isBright: Math.random() < 0.16,    // Only 16% get a subtle sparkle halo
       phase: Math.random() * Math.PI * 2
     });
   }
@@ -168,8 +151,8 @@
   const trailPts = [];
   for (let i = 0; i < N_TRAIL; i++) {
     const yNorm = Math.random();
-    const y = -1.0 + yNorm * 2.2;
-    const r = ((1 - yNorm) * 0.95 + 0.05) * 1.12;
+    const y = -1.05 + yNorm * 2.25;
+    const r = ((1 - yNorm) * 0.92 + 0.05) * 1.14;
     trailPts.push({
       r, y, a: Math.random() * Math.PI * 2,
       speed: 0.12 + Math.random() * 0.22,
@@ -193,10 +176,9 @@
   function rgb(c, a = 1) { return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
 
   function updateThemeUI() {
-    rebuildSprites(themeIdx);
     const c = THEMES[themeIdx].colors[0];
     titleEl.style.color = `rgb(${c[0]},${c[1]},${c[2]})`;
-    titleEl.style.textShadow = `0 0 18px rgba(${c[0]},${c[1]},${c[2]},0.75)`;
+    titleEl.style.textShadow = `0 0 14px rgba(${c[0]},${c[1]},${c[2]},0.65)`;
     themeBtn.textContent = `Theme: ${THEMES[themeIdx].name}`;
   }
   updateThemeUI();
@@ -205,13 +187,12 @@
     const ca = Math.cos(ang), sa = Math.sin(ang);
     const rx = x * ca + z * sa;
     const rz = -x * sa + z * ca;
-    // Responsive scale so the tree fills portrait mobile screens nicely
-    const baseScale = Math.min(W * 0.72, H * 0.56);
-    const scale = baseScale / (dist - rz * 0.45 + 0.75);
+    const baseScale = Math.min(W * 0.78, H * 0.58);
+    const scale = baseScale / (dist - rz * 0.45 + 0.72);
     return {
       sx: W / 2 + rx * scale,
       sy: H * 0.52 - y * scale,
-      scale, depth: (rz + 1) / 2
+      scale, depth: Math.max(0, Math.min(1, (rz + 1) / 2))
     };
   }
 
@@ -221,8 +202,8 @@
     ctx.rotate(rot);
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
     if (glowOn) {
-      ctx.shadowColor = rgb(color, 0.95);
-      ctx.shadowBlur = s * 1.4;
+      ctx.shadowColor = rgb(color, 0.9);
+      ctx.shadowBlur = s * 0.9;
     }
     ctx.beginPath();
     for (let i = 0; i <= 32; i++) {
@@ -235,7 +216,7 @@
     ctx.closePath();
     ctx.fillStyle = rgb(color, 1);
     ctx.fill();
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.1;
     ctx.strokeStyle = "rgba(255,255,255,0.85)";
     ctx.stroke();
     ctx.restore();
@@ -267,11 +248,11 @@
     pauseBtn.textContent = paused ? "Resume" : "Pause";
   });
   resetBtn.addEventListener("click", () => {
-    angle = 0; targetDist = 3.1; camDist = 3.1;
+    angle = 0; targetDist = 3.0; camDist = 3.0;
   });
 
   // Mouse & Touch Controls
-  let dragging = false, lastX = 0, pinchStartDist = 0, pinchStartCam = 3.1, moved = false;
+  let dragging = false, lastX = 0, pinchStartDist = 0, pinchStartCam = 3.0, moved = false;
 
   canvas.addEventListener("pointerdown", e => {
     dragging = true; lastX = e.clientX; moved = false;
@@ -336,17 +317,17 @@
     } else if (transPhase === "reforming") {
       transProg += dt / 2.8;
       const h = Math.min(1, transProg);
-      const spY = -1.0 + h * 2.38;
-      const spR = Math.max(0.02, (1 - h) * 1.02);
+      const spY = -1.05 + h * 2.4;
+      const spR = Math.max(0.02, (1 - h) * 0.98);
       const spAng = h * Math.PI * 2 * 3.5;
       sparkTrail.push({ x: Math.cos(spAng) * spR, y: spY, z: Math.sin(spAng) * spR, life: 1.0 });
-      if (sparkTrail.length > 85) sparkTrail.shift();
+      if (sparkTrail.length > 80) sparkTrail.shift();
       for (const s of sparkTrail) s.life -= dt * 1.1;
 
       if (transProg >= 1) {
         transPhase = "idle";
         transProg = 0;
-        const topP = project(0, 1.38, 0, angle, camDist);
+        const topP = project(0, 1.32, 0, angle, camDist);
         bursts.push({ x: topP.sx, y: topP.sy, life: 1.0 });
       }
     }
@@ -358,26 +339,25 @@
     ctx.fillStyle = `rgb(${bg[0]},${bg[1]},${bg[2]})`;
     ctx.fillRect(0, 0, W, H);
 
-    // Ambient bokeh stars
-    ctx.globalCompositeOperation = "lighter";
+    // Crisp background stars
     for (let i = 0; i < N_AMBIENT; i++) {
       const a = ambient[i];
       const p = project(a.x, a.y, a.z, angle * 0.3, camDist + 0.8);
-      if (p.sx < -10 || p.sx > W + 10 || p.sy < -10 || p.sy > H + 10) continue;
-      const tw = 0.35 + 0.65 * Math.sin(timeT * 1.8 + a.phase);
-      const sz = 4 + tw * 5;
-      ctx.globalAlpha = tw * 0.55;
-      ctx.drawImage(sprites[a.cIdx], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
+      if (p.sx < 0 || p.sx > W || p.sy < 0 || p.sy > H) continue;
+      const tw = 0.3 + 0.7 * Math.sin(timeT * 1.8 + a.phase);
+      ctx.fillStyle = rgb(theme.colors[a.cIdx], tw * 0.65);
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, 0.7 + tw * 0.7, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Glowing elliptical base
-    const baseP = project(0, -1.05, 0, angle, camDist);
+    // Subtle glowing base
+    const baseP = project(0, -1.08, 0, angle, camDist);
     const baseAlpha = transPhase === "dissolving" ? Math.max(0, 1 - transProg) : transPhase === "reforming" ? Math.min(1, transProg * 2) : 1;
     if (baseAlpha > 0.02) {
-      ctx.globalAlpha = 1;
-      const baseR = Math.min(W * 0.42, 180);
-      const grad = ctx.createRadialGradient(baseP.sx, baseP.sy, 6, baseP.sx, baseP.sy, baseR);
-      grad.addColorStop(0, rgb(theme.colors[0], 0.45 * baseAlpha));
+      const baseR = Math.min(W * 0.42, 160);
+      const grad = ctx.createRadialGradient(baseP.sx, baseP.sy, 4, baseP.sx, baseP.sy, baseR);
+      grad.addColorStop(0, rgb(theme.colors[0], 0.35 * baseAlpha));
       grad.addColorStop(1, rgb(theme.colors[0], 0));
       ctx.save();
       ctx.scale(1, 0.22);
@@ -388,9 +368,10 @@
       ctx.restore();
     }
 
-    // Tree particles (crisp glowing stardust)
+    // Crisp pinpoint tree particles
     ctx.globalCompositeOperation = glowOn ? "lighter" : "source-over";
-    const sizeScale = Math.min(W, H) / 420;
+    const zoomFactor = 3.0 / Math.max(1.5, camDist);
+
     for (let i = 0; i < N_TREE; i++) {
       const pt = treePts[i];
       let px = pt.hx, py = pt.hy, pz = pt.hz;
@@ -419,25 +400,39 @@
 
       if (alpha <= 0.02) continue;
       const p = project(px, py, pz, angle, camDist);
-      if (p.sx < -12 || p.sx > W + 12 || p.sy < -12 || p.sy > H + 12) continue;
+      if (p.sx < -6 || p.sx > W + 6 || p.sy < -6 || p.sy > H + 6) continue;
 
-      const tw = 0.55 + 0.45 * Math.sin(timeT * 2.8 + pt.phase);
-      const spriteSize = (glowOn ? 7.5 : 4.2) * pt.size * sizeScale * (0.55 + p.depth * 0.7) * (3.1 / Math.max(1.5, camDist));
-      ctx.globalAlpha = Math.min(1, alpha * (0.45 + tw * 0.55));
-      const sp = flash > 0.2 ? whiteSprite : sprites[pt.cIdx];
-      ctx.drawImage(sp, p.sx - spriteSize / 2, p.sy - spriteSize / 2, spriteSize, spriteSize);
+      const tw = 0.5 + 0.5 * Math.sin(timeT * 3.0 + pt.phase);
+      const r = pt.size * (0.55 + p.depth * 0.65) * zoomFactor;
+      const c = flash > 0.2 ? [255, 255, 255] : theme.colors[pt.cIdx];
+      const finalA = alpha * (0.4 + p.depth * 0.35 + tw * 0.25);
+
+      // Optional tight halo ONLY on the brightest 16% of particles when Glow is ON
+      if (glowOn && pt.isBright) {
+        ctx.fillStyle = rgb(c, finalA * 0.22);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, r * 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Crisp sharp core dot
+      ctx.fillStyle = rgb(c, Math.min(1, finalA));
+      ctx.beginPath();
+      ctx.arc(p.sx, p.sy, r, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    // Orbiting trails
+    // Crisp orbiting trail particles
     if (transPhase === "idle") {
       for (let i = 0; i < N_TRAIL; i++) {
         const tr = trailPts[i];
         const a0 = tr.a + timeT * tr.speed;
         const y = tr.y + Math.sin(timeT * 1.2 + i) * 0.02;
         const p = project(Math.cos(a0) * tr.r, y, Math.sin(a0) * tr.r, 0, camDist);
-        const sz = 6.5 * sizeScale;
-        ctx.globalAlpha = 0.72;
-        ctx.drawImage(sprites[tr.cIdx], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
+        ctx.fillStyle = rgb(theme.colors[tr.cIdx], 0.8);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, 1.15 * zoomFactor, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -448,9 +443,11 @@
         if (s.life <= 0) continue;
         const p = project(s.x, s.y, s.z, angle, camDist);
         const isHead = i === sparkTrail.length - 1;
-        const sz = isHead ? 26 * sizeScale : (5 + (i / sparkTrail.length) * 11) * sizeScale;
-        ctx.globalAlpha = isHead ? 1 : Math.max(0, s.life * 0.9);
-        ctx.drawImage(isHead ? whiteSprite : sprites[0], p.sx - sz / 2, p.sy - sz / 2, sz, sz);
+        const rad = isHead ? 4.5 : 0.9 + (i / sparkTrail.length) * 2.2;
+        ctx.fillStyle = isHead ? "rgba(255,255,255,1)" : rgb(theme.colors[0], s.life * 0.9);
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, rad, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
@@ -461,19 +458,19 @@
       if (b.life <= 0) { bursts.splice(i, 1); continue; }
       for (let k = 0; k < 14; k++) {
         const a = (k / 14) * Math.PI * 2 + timeT;
-        const rr = (1 - b.life) * 65;
-        const sz = 10 * b.life;
-        ctx.globalAlpha = b.life;
-        ctx.drawImage(sprites[k % 6], b.x + Math.cos(a) * rr - sz / 2, b.y + Math.sin(a) * rr - sz / 2, sz, sz);
+        const rr = (1 - b.life) * 60;
+        ctx.fillStyle = rgb(theme.colors[k % 6], b.life);
+        ctx.beginPath();
+        ctx.arc(b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr, 1.6, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
 
-    ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
 
     // Heart Topper + Gift Surprise
-    const topP = project(0, 1.34 + Math.sin(timeT * 2) * 0.025, 0, angle, camDist);
-    let heartScale = Math.max(14, 18 * sizeScale) * (1 + 0.1 * Math.sin(timeT * 3.5));
+    const topP = project(0, 1.32 + Math.sin(timeT * 2) * 0.02, 0, angle, camDist);
+    let heartScale = Math.max(14, Math.min(20, W * 0.045)) * (1 + 0.08 * Math.sin(timeT * 3.5));
     let heartAlpha = transPhase === "dissolving" ? Math.max(0, 1 - transProg * 1.5) : transPhase === "reforming" ? Math.max(0, (transProg - 0.85) / 0.15) : 1;
 
     if (gift.phase === "beating") {
@@ -490,7 +487,7 @@
           gift.miniHearts.push({
             x: topP.sx, y: topP.sy,
             vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 40,
-            size: 6 + Math.random() * 10,
+            size: 5 + Math.random() * 9,
             rot: (Math.random() - 0.5) * 0.6,
             vRot: (Math.random() - 0.5) * 1.5,
             life: 5.5 + Math.random() * 2.0,
@@ -522,7 +519,7 @@
       if (sw.alpha <= 0) { gift.shockwaves.splice(i, 1); continue; }
       ctx.save();
       ctx.strokeStyle = rgb(theme.colors[0], sw.alpha);
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
       ctx.stroke();
@@ -549,6 +546,16 @@
       ctx.textAlign = "center";
       ctx.font = `bold ${Math.max(24, Math.min(44, W * 0.08))}px Georgia, serif`;
       ctx.shadowColor = rgb(theme.colors[0], 0.95);
-      ctx.shadowBlur = 24;
+      ctx.shadowBlur = 22;
       ctx.fillStyle = "#ffffff";
-      ctx.fillText
+      ctx.fillText("I love you friend", W / 2, H * 0.34);
+      ctx.restore();
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
